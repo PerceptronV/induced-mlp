@@ -16,8 +16,16 @@ def train(
     early_stop=0,
     show_pbar=True,
     leave_pbar=True,
-    verbose=True
+    verbose=True,
+    its=None
 ):
+    
+    def apply(*args, **kwargs):
+        if its is None:
+            return model(*args, **kwargs)
+        else:
+            return model(*args, **kwargs, its=its)
+
     step = 0
     train_losses = []
     val_losses = []
@@ -37,11 +45,14 @@ def train(
                 'step': step,
                 'epoch': epoch,
                 'batch': batch,
+                'total_steps': len(train_dataloader),
+                'total_epochs': n_epochs,
+                'progress': epoch / n_epochs,
                 'train': True
             }
 
             optimiser.zero_grad()
-            y_pred = model(x)
+            y_pred = apply(x)
             loss = train_criterion(y_pred, y, **ctx)
             loss.backward()
             optimiser.step()
@@ -65,7 +76,7 @@ def train(
                         'batch': batch,
                         'train': False
                     }
-                    y_pred = model(x)
+                    y_pred = apply(x, weights=model.weights.triu())
                     loss = val_criterion(y_pred, y, **ctx)
                     _loss = loss.item()
                     val_loss += _loss

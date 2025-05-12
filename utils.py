@@ -26,7 +26,7 @@ def filter_topk(
     out = tensor.clone()
     flat = out.flatten()
 
-    order = flat.argsort(descending=True)
+    order = flat.abs().argsort(descending=True)
     n = int(k * flat.size(0))
 
     # out is mutable; flat accesses its memory

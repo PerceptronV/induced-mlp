@@ -1,3 +1,4 @@
+import math
 import torch
 
 from utils import ChainableFn, filter_topk
@@ -40,6 +41,15 @@ class TopKPrune(ChainableFn):
 
     def fn(self, arr, **ctx):
         return filter_topk(arr, self.k, return_mask=False)
+
+class DynamicTopK(ChainableFn):
+    name = "DynamicTopK"
+    def __init__(self, prev=None, p=1.):
+        super().__init__(prev)
+        self.eqn = lambda x: 1 - (1-p) * (math.sin(math.pi/2 * x)** 4)
+
+    def fn(self, arr, **ctx):
+        return filter_topk(arr, self.eqn(ctx['progress']), return_mask=False)
 
 class TriuPrune(ChainableFn):
     name = "TriuPrune"

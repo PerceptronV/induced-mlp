@@ -85,3 +85,30 @@ class WeightVisualiser(EvalVisualiser):
 
         for i in self.show:
             self.heat(*map[i])
+
+
+class DirectionalityVisualiser(EvalVisualiser):
+    def __init__(self, name='Weights'):
+        self.name = name
+        self.all_weights = []
+    
+    def update(self, result):
+        weight = result['model'].weights
+        self.all_weights.append(weight.detach().cpu().numpy())
+    
+    def heat(self, matrix, title):
+        sns.heatmap(matrix, annot=True)
+        plt.title(f'{title} {self.name}')
+        plt.tight_layout()
+        plt.show()
+
+    def display(self):        
+        all_weights = np.array(self.all_weights)
+        mean_weights = np.mean(all_weights, axis=0)
+        std_weights = np.std(all_weights, axis=0)
+        indices = np.triu_indices_from(mean_weights, k=1)
+
+        ratio = (np.abs(mean_weights) + std_weights) / ( np.sum(np.abs(mean_weights)[indices])/len(indices) )
+        directionality = 1 - np.mean(ratio[indices])
+
+        print(f'Directionality: {directionality}')
