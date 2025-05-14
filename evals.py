@@ -90,6 +90,8 @@ class WeightVisualiser(EvalVisualiser):
         for i in self.show:
             self.heat(*map[i])
         
+        self.sample = all_weights[0]
+        
         return all_weights, mean_weights, std_weights
 
 
