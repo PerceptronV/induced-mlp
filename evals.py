@@ -121,7 +121,15 @@ class DirectionalityVisualiser(EvalVisualiser):
         
         mean_dir = np.mean(scores)
         std_dir = np.std(scores)
+        max_dir = np.max(scores)
+        min_dir = np.min(scores)
 
         print(f'Directionality: {mean_dir:.3f} $\pm$ {std_dir:.3f}')
 
-        return scores, mean_dir, std_dir
+        self.scores = scores
+        self.mean_dir = mean_dir
+        self.std_dir = std_dir
+        self.max_dir = max_dir
+        self.min_dir = min_dir
+
+        return scores

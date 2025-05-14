@@ -21,7 +21,7 @@ class RandomPrune(ChainableFn):
         if not self.persistent or not self.initialised:
             self.initialised = True
             self.mask = torch.rand(arr.shape) < self.p
-        return arr.masked_fill(self.mask, 0)
+        return arr.masked_fill(self.mask.to(arr.device), 0)
 
 class ThresholdPrune(ChainableFn):
     name = "ThresholdPrune"
@@ -44,21 +44,33 @@ class TopKPrune(ChainableFn):
 
 class DynamicTopK(ChainableFn):
     name = "DynamicTopK"
-    def __init__(self, prev=None, p=1.):
+    def __init__(self, prev=None, k=1.):
         super().__init__(prev)
-        self.eqn = lambda x: 1 - (1-p) * (math.sin(math.pi/2 * x)** 4)
+        self.eqn = lambda x: 1 - (1-k) * (math.sin(math.pi/2 * x)** 4)
 
     def fn(self, arr, **ctx):
         return filter_topk(arr, self.eqn(ctx['progress']), return_mask=False)
-
+    
 class TriuDamp(ChainableFn):
     name = "TriuDamp"
-    def __init__(self, prev=None, diagonal=0):
+    def __init__(self, prev=None, diagonal=0, f=0.9):
         super().__init__(prev)
         self.diag = diagonal
+        self.f = f
     
     def fn(self, arr, **ctx):
-        return arr - arr.tril(self.diag-1) * 0.9
+        return arr - arr.tril(self.diag-1) * self.f
+
+class DynamicTriuDamp(ChainableFn):
+    name = "DynamicTriuDamp"
+    def __init__(self, prev=None, diagonal=0, f=0.9):
+        super().__init__(prev)
+        self.diag = diagonal
+        self.f = f
+        self.eqn = lambda x: f * (math.sin(math.pi/2 * x)** 4)
+    
+    def fn(self, arr, **ctx):
+        return arr - arr.tril(self.diag-1) * self.eqn(ctx['progress'])
 
 class TriuPrune(ChainableFn):
     name = "TriuPrune"
