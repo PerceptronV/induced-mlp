@@ -1,6 +1,8 @@
 import numpy as np
+import networkx as nx
 import seaborn as sns
 from matplotlib import pyplot as plt
+from utils import permute, brute_force_directionality
 
 
 class EvalVisualiser:
@@ -49,6 +51,8 @@ class LineVisualiser(EvalVisualiser):
         plt.tight_layout()
         plt.show()
 
+        return mean_y, max_y, min_y
+
 
 class WeightVisualiser(EvalVisualiser):
     def __init__(self, extractor, name='Weights', show=None):
@@ -85,30 +89,39 @@ class WeightVisualiser(EvalVisualiser):
 
         for i in self.show:
             self.heat(*map[i])
+        
+        return all_weights, mean_weights, std_weights
 
 
 class DirectionalityVisualiser(EvalVisualiser):
-    def __init__(self, name='Weights'):
+    def __init__(self, extractor, name='Weights', graphs=False):
+        self.extractor = extractor
         self.name = name
+        self.graphs = graphs
+        self.input_size = None
+        self.output_size = None
         self.all_weights = []
     
     def update(self, result):
-        weight = result['model'].weights
-        self.all_weights.append(weight.detach().cpu().numpy())
-    
-    def heat(self, matrix, title):
-        sns.heatmap(matrix, annot=True)
-        plt.title(f'{title} {self.name}')
-        plt.tight_layout()
-        plt.show()
+        weights = self.extractor(result)
+        self.input_size = result['model'].input_size
+        self.output_size = result['model'].output_size
+        self.all_weights.append(weights.detach().cpu().numpy())
 
-    def display(self):        
-        all_weights = np.array(self.all_weights)
-        mean_weights = np.mean(all_weights, axis=0)
-        std_weights = np.std(all_weights, axis=0)
-        indices = np.triu_indices_from(mean_weights, k=1)
+    def display(self):
+        scores = []
+        for w in self.all_weights:
+            square = w[:, :-self.input_size]
+            directionality, perm = brute_force_directionality(square, self.input_size)
+            if self.graphs:
+                sns.heatmap(permute(square, perm), annot=True)
+                plt.title(f'Directionality of {self.name}: {directionality:.3f}')
+                plt.show()
+            scores.append(directionality)
+        
+        mean_dir = np.mean(scores)
+        std_dir = np.std(scores)
 
-        ratio = (np.abs(mean_weights) + std_weights) / ( np.sum(np.abs(mean_weights)[indices])/len(indices) )
-        directionality = 1 - np.mean(ratio[indices])
+        print(f'Directionality: {mean_dir:.3f} $\pm$ {std_dir:.3f}')
 
-        print(f'Directionality: {directionality}')
+        return scores, mean_dir, std_dir

@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from inits import Size, Like, RandomUniform, Zeros
+from funcs import topk_mask
+from inits import Size, Like, RandomUniform, Zeros, Ones
 
 
 class CompleteLayer(nn.Module):
@@ -11,10 +12,11 @@ class CompleteLayer(nn.Module):
         input_size,
         hidden_size,
         output_size,
-        values_init=(Zeros, False),
+        values_init=(RandomUniform, False),
         weights_init=(RandomUniform, True),
-        scores_init=(RandomUniform, False),
         bias_init=(RandomUniform, True),
+        scores_init=(Ones, False),
+        scores_k=1.,
         activation=F.sigmoid,
         use_bias=False
     ):
@@ -37,6 +39,7 @@ class CompleteLayer(nn.Module):
             scores_init[0](Like)(self.weights),
             requires_grad = scores_init[1]
         )
+        self.scores_k = scores_k
 
         self.activation = activation
         self.use_bias = use_bias
@@ -45,41 +48,48 @@ class CompleteLayer(nn.Module):
                 bias_init[0](Like)(self.values),
                 requires_grad = bias_init[1]
             )
+    
+    def apply(
+        self,
+        inp,
+        its,
+        values,
+        weights,
+        scores,
+        bias=None,
+    ):
+        batch = inp.size(0)
+        values = values.expand(batch, -1)   # dim-0 of inp is batch
+        if self.use_bias:
+            bias = bias.expand(batch, -1)   # dim-0 of inp is batch
         
+        scores_mask = topk_mask(scores, self.scores_k)
+        w = weights * scores_mask
+        
+        for _ in range(its):
+            x = torch.cat((values, inp), 1) # dim-1 of inp is features
+            if self.use_bias:
+                values = self.activation(x @ w.t() + bias)
+            else:
+                values = self.activation(x @ w.t())
+        
+        return values[:, :self.output_size]
+    
     def forward(
         self,
         inp,
         its=2,
-        values=None,
-        weights=None,
-        scores=None,
-        bias=None
+        **kwargs
     ):
-        batch = inp.size(0)
-
-        if values is None:
-            values = self.values
-        values = values.expand(batch, -1)  # dim-0 of inp is batch
-
-        if weights is None:
-            weights = self.weights
-        
-        if scores is None:
-            scores = self.scores
-        
+        defaults = {
+            'values': self.values,
+            'weights': self.weights,
+            'scores': self.scores,
+            'its': its
+        }
         if self.use_bias:
-            if bias is None:
-                bias = self.bias
-            bias = bias.expand(batch, -1)  # dim-0 of inp is batch
-
-        for _ in range(its):
-            x = torch.cat((values, inp), 1)             # dim-1 of inp is features
-            if self.use_bias:
-                values = self.activation(x @ weights.t() + bias)
-            else:
-                values = self.activation(x @ weights.t())
-        
-        return values[:, :self.output_size]
+            defaults['bias'] = self.bias
+        return self.apply(inp, **(defaults | kwargs))
     
     def norm(self, include_values=True):
         norm = torch.linalg.matrix_norm(self.weights)

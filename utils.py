@@ -1,4 +1,6 @@
 import torch
+import itertools
+import numpy as np
 
 
 class ChainableFn:
@@ -35,3 +37,34 @@ def filter_topk(
         flat[order[:n]] = 1
     
     return out
+
+
+def permute(x, perm_0, perm_1=None):
+    if perm_1 is None:
+        perm_1 = perm_0
+    return x[perm_0][:, perm_1]
+
+
+def brute_force_directionality(
+    adj_mat: np.ndarray,
+    inp_size: int
+):
+    n = len(adj_mat)
+    arr = np.abs(adj_mat)
+    header = list(range(inp_size))
+    
+    min_cost = np.inf
+    min_perm = None
+
+    for _p in itertools.permutations(range(inp_size, n)):
+        perm = header + list(_p)
+        mat = permute(arr, perm)
+        cost = np.sum(np.tril(mat, -1))
+
+        if cost < min_cost:
+            min_cost = cost
+            min_perm = perm
+
+    directionality = 1 - min_cost / np.sum(arr)
+
+    return float(directionality), min_perm

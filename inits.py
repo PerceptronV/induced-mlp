@@ -25,15 +25,20 @@ class Zeros(ChainableFn):
     name = 'Zeros'
     def fn(self, arr, **ctx):
         return torch.zeros_like(arr)
+    
+class Ones(ChainableFn):
+    name = 'Ones'
+    def fn(self, arr, **ctx):
+        return torch.ones_like(arr)
 
 class Triu(ChainableFn):
     name = 'Triu'
-    def __init__(self, prev, diagonal=1):
+    def __init__(self, prev, diagonal=0):
         super().__init__(prev)
         self.diag = diagonal
 
     def fn(self, arr, **ctx):
-        return arr.triu(self.diag)
+        return arr - arr.tril(self.diag-1) * 0.9
 
 class _Size(ChainableFn):
     name = 'Size'

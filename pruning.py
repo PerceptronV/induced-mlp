@@ -51,9 +51,18 @@ class DynamicTopK(ChainableFn):
     def fn(self, arr, **ctx):
         return filter_topk(arr, self.eqn(ctx['progress']), return_mask=False)
 
+class TriuDamp(ChainableFn):
+    name = "TriuDamp"
+    def __init__(self, prev=None, diagonal=0):
+        super().__init__(prev)
+        self.diag = diagonal
+    
+    def fn(self, arr, **ctx):
+        return arr - arr.tril(self.diag-1) * 0.9
+
 class TriuPrune(ChainableFn):
     name = "TriuPrune"
-    def __init__(self, prev=None, diagonal=1):
+    def __init__(self, prev=None, diagonal=0):
         super().__init__(prev)
         self.diag = diagonal
     

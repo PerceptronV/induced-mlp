@@ -2,3 +2,7 @@ jax
 flax
 optax
 orbax
+torch
+seaborn
+networkx
+matplotlib

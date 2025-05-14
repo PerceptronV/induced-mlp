@@ -18,10 +18,10 @@ def run(tries, setup_fn, visualisers, seed=0, *args, **kwargs):
     result = None
     for i in tqdm(range(tries)):
         result = train(*args, **kwargs, **setup_fn())
-        for vis in visualisers:
-            vis.update(result)
+        for key in visualisers:
+            visualisers[key].update(result)
     
-    for vis in visualisers:
-        vis.display()
+    for key in visualisers:
+        visualisers[key].display()
     
     return visualisers, result

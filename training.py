@@ -76,7 +76,7 @@ def train(
                         'batch': batch,
                         'train': False
                     }
-                    y_pred = apply(x, weights=model.weights.triu())
+                    y_pred = apply(x)
                     loss = val_criterion(y_pred, y, **ctx)
                     _loss = loss.item()
                     val_loss += _loss
